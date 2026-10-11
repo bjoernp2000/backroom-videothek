@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import glob
 import os
+import socket
 import subprocess
 import threading
 import time
@@ -66,6 +67,17 @@ def _serve_url(chat_id: int, message_id: int) -> str:
     return f"https://t.me/c/{_public_id(chat_id)}/{int(message_id)}"
 
 
+def _wait_port(timeout: float = 8.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", _SERVE_PORT), timeout=0.4):
+                return True
+        except OSError:
+            time.sleep(0.15)
+    return False
+
+
 def serve_start(url: str | None = None) -> bool:
     """Startet den persistenten tdl --serve HTTP-Server.
 
@@ -99,6 +111,15 @@ def serve_start(url: str | None = None) -> bool:
                 creationflags=flags)
             _SERVE_URL = url
         except Exception:
+            _SERVE_PROC = None
+            _SERVE_URL = None
+            return False
+        _SERVE_URL = url
+        if not _wait_port():
+            try:
+                _SERVE_PROC.terminate()
+            except Exception:
+                pass
             _SERVE_PROC = None
             _SERVE_URL = None
             return False

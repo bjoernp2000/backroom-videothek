@@ -164,7 +164,7 @@ def create_app() -> Flask:
             return jsonify({"ok": False, "error": "Ungültige Stream-Adresse"}), 400
         try:
             from . import player
-            player.play_video(url, title)
+            player.play_video(url, title, live=True)
             return jsonify({"ok": True, "title": title})
         except Exception as exc:
             return jsonify({"ok": False, "error": f"TV-Player konnte nicht gestartet werden: {exc}"}), 500
@@ -1743,6 +1743,31 @@ def create_app() -> Flask:
             return jsonify({'error': 'Medium nicht verfügbar'}), 404
         total = int(mi.get('size_bytes') or 0)
         mime = _mime(mi)
+        try:
+            from . import tdltool
+            fast_url = tdltool.serve_stream(int(mi['chat_id']), int(mi['message_id']))
+            if fast_url:
+                import urllib.request
+                upstream = urllib.request.urlopen(
+                    urllib.request.Request(fast_url, headers={'User-Agent': 'Backroom-TV/1.0'}),
+                    timeout=30,
+                )
+                def fast_body():
+                    try:
+                        while True:
+                            chunk = upstream.read(512 * 1024)
+                            if not chunk:
+                                break
+                            yield chunk
+                    finally:
+                        upstream.close()
+                response = Response(fast_body(), status=200, mimetype=mime)
+                response.headers['Accept-Ranges'] = 'none'
+                response.headers['Cache-Control'] = 'no-store'
+                response.headers['X-Backroom-Stream'] = 'tdlib'
+                return response
+        except Exception:
+            pass
         cache.ensure(mid, int(mi['chat_id']), int(mi['message_id']), total, mime)
         start = 0
         end = max(0, total - 1)

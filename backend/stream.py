@@ -17,12 +17,12 @@ from . import telegram
 KB = 1024
 MB = 1024 * KB
 ALIGN = 4096
-CHUNK = 256 * KB
-SLOT = MB
-WORKERS = 2
-CAP_BYTES = 64 * MB          # gepufferte Bytes vor dem Consumer (= Backpressure)
-PRE_START = 8 * MB           # so viel voraus, bevor der Player die ersten Bytes bekommt
-PRE_START_S = 3.0            # spaetestens nach X Sekunden starten (auch mit weniger)
+CHUNK = 512 * KB
+SLOT = 2 * MB
+WORKERS = 6
+CAP_BYTES = 64 * MB
+PRE_START = 2 * MB
+PRE_START_S = 2.0
 
 ACTIVE = [0]                 # offene Player-Streams -> Scanner drosselt sich
 _act = threading.Lock()
