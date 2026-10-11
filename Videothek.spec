@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 project_root = Path(getattr(sys, "SPECPATH", os.getcwd())).resolve()
+app_icon = project_root / "assets" / "videothek.ico"
 
 a = Analysis(
     [str(project_root / "launcher" / "app.py")],
@@ -47,5 +48,5 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
-    icon=str(project_root / "assets" / "videothek.ico"),
+    icon=str(app_icon) if app_icon.exists() else None,
 )
