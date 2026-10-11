@@ -101,7 +101,7 @@ def serve_start(url: str | None = None) -> bool:
             return False
         sess, ns = _creds()
         cmd = [str(TDL), "dl", "--serve", "--port", str(_SERVE_PORT),
-               "--ns", ns, "--storage", f"type=file,path={sess}"]
+               "--threads", "8", "--ns", ns, "--storage", f"type=file,path={sess}"]
         if url:
             cmd += ["-u", url]
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
