@@ -1,0 +1,27 @@
+# Local/runtime data
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+build/
+dist/
+*.exe
+*.msi
+*.log
+
+# User data and credentials
+data/
+.env
+.env.*
+*.sqlite
+*.sqlite3
+*.db
+tdl_passcode.txt
+
+# Local/generated/private material
+assets/
+.kus-review/
+kus-review/
+_*.
+frontend/.check-*.js
