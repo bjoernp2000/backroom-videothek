@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS sports_sources(
     added_at REAL
 );
 CREATE INDEX IF NOT EXISTS idx_sports_sources_chat ON sports_sources(chat_id, chosen);
+CREATE TABLE IF NOT EXISTS music_sources(
+    source_url TEXT PRIMARY KEY,
+    username TEXT,
+    chat_id INTEGER,
+    topic_id INTEGER,
+    chosen INTEGER DEFAULT 1,
+    added_at REAL
+);
+CREATE INDEX IF NOT EXISTS idx_music_sources_chat ON music_sources(chat_id, chosen);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 
@@ -174,6 +183,14 @@ def init_db() -> None:
             conn.execute(
                 "UPDATE sports_sources SET chat_id=(SELECT chat_id FROM groups WHERE lower(username)=lower(?) AND last_seen>0) "
                 "WHERE source_url=? AND chat_id IS NULL", (username, source_url))
+    for source_url, username, chat_id, topic_id in (
+        ("https://t.me/c/1179822958/186474", None, -1001179822958, None),
+        ("https://t.me/+G5ZmGECvMuBmZjli", None, None, None),
+        ("https://t.me/c/2142840116/11279/638203", None, -1002142840116, 11279),
+    ):
+        conn.execute(
+            "INSERT OR IGNORE INTO music_sources(source_url,username,chat_id,topic_id,chosen,added_at) VALUES(?,?,?,?,1,?)",
+            (source_url, username, chat_id, topic_id, time.time()))
     conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('created',?)", (str(time.time()),))
     conn.commit()
 

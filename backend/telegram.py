@@ -159,6 +159,28 @@ def get_media_print(msg) -> dict | None:
         return None
 
 
+def get_media_audio(msg) -> dict | None:
+    """Audio-/Hörspiel-Daten einer Telegram-Nachricht, sonst None."""
+    try:
+        from telethon.tl.types import MessageMediaDocument
+        if not getattr(msg, "media", None) or not isinstance(msg.media, MessageMediaDocument):
+            return None
+        doc = msg.media.document
+        attrs = {type(a).__name__: a for a in (doc.attributes or [])}
+        fname = getattr(attrs.get("DocumentAttributeFilename"), "file_name", "") or ""
+        mime = (doc.mime_type or "").lower()
+        is_audio = "DocumentAttributeAudio" in attrs
+        is_file = fname.lower().endswith((".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".wma"))
+        if not (is_audio or mime.startswith("audio/") or is_file):
+            return None
+        audio = attrs.get("DocumentAttributeAudio")
+        return {"filename": fname, "mime": mime or "audio/mpeg", "size": int(doc.size or 0),
+                "duration": int(getattr(audio, "duration", 0) or 0) if audio else 0,
+                "width": 0, "height": 0}
+    except Exception:
+        return None
+
+
 def message_link(entity, msg_id: int, topic_id: int | None = None) -> str:
     """t.me-Link. Basic-Chats ohne Username haben keinen oeffentlichen Link."""
     try:

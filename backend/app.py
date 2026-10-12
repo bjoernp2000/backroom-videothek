@@ -62,7 +62,7 @@ def create_app() -> Flask:
     scanner.resume_scans()   # laufende/queuende Scans nach Neustart fortsetzen
     scanner.resume_pending() # Downloads aus Warteschlange/.part neu aufnehmen
     scanner.start_pump()     # Fehler selbstlaeufig erneut versuchen
-    scanner.start_scan([r["chat_id"] for r in db.q("SELECT chat_id FROM kiosk_sources WHERE chosen=1")])
+    scanner.start_scan()  # gewählte Medien-, Kiosk-, Wrestling- und Hörspielquellen
     scanner.start_live_sync(60)  # gewählte Telegram-Quelle regelmäßig nachziehen
     scanner.start_matcher()
     curation.start_credits_worker()   # Cast/Crew fuer Schauspieler-Seite nachziehen
@@ -127,7 +127,21 @@ def create_app() -> Flask:
             limit = max(1, min(int(request.args.get("limit", 48)), 100))
         except (TypeError, ValueError):
             limit = 48
-        return jsonify(music.catalog(source, limit))
+        area = request.args.get("area", "music")
+        return jsonify(music.catalog(source, limit, area))
+    @app.get("/api/music/sources")
+    def music_sources():
+        return jsonify({"ok": True, "sources": music.sources()})
+
+    @app.post("/api/music/sources")
+    def music_source_add():
+        data = request.get_json(force=True) or {}
+        try:
+            source = music.add_source(data.get("source_url", ""), data.get("chat_id"), data.get("topic_id"))
+            return jsonify({"ok": True, "source": source})
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+
     @app.get("/api/tv/sources")
     def tv_sources():
         return jsonify({"ok": True, "sources": tv.sources()})

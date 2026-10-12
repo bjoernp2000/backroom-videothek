@@ -43,12 +43,16 @@ def _topic_titles(entity) -> dict:
 
 def _store_video(entity, msg, topic_titles, chat_id: int, conn=None):
     """Speichert ein neues Media-Item aus einer Telegram-Nachricht."""
-    from .telegram import get_media_video, get_media_print, message_link
+    from .telegram import get_media_video, get_media_print, get_media_audio, message_link
     media = get_media_video(msg)
     print_item = False
+    audio_item = False
     if not media:
         media = get_media_print(msg)
         print_item = bool(media)
+    if not media:
+        media = get_media_audio(msg)
+        audio_item = bool(media)
     if not media:
         return
 
@@ -78,7 +82,7 @@ def _store_video(entity, msg, topic_titles, chat_id: int, conn=None):
          media.get("duration", 0), media.get("width", 0), media.get("height", 0),
          link, parsed.get("title", ""), parsed.get("year", None),
          parsed.get("season", None), parsed.get("episode", None),
-         parsed.get("media_kind", "print" if print_item else "movie"), "unmatched",
+         "audio" if audio_item else ("print" if print_item else parsed.get("media_kind", "movie")), "unmatched",
          specs["quality"], specs["codec"], specs["audio_lang"], specs["hdr"],
          specs["subtitles"], specs["release_type"]))
     _conn.commit()
@@ -92,7 +96,8 @@ def _scan_worker():
                    FROM scan_state s JOIN groups g ON g.chat_id=s.chat_id
                    LEFT JOIN kiosk_sources ks ON ks.chat_id=s.chat_id
                    LEFT JOIN sports_sources ss ON ss.chat_id=s.chat_id
-                   WHERE s.status='queued' AND (g.chosen=1 OR ks.chosen=1 OR ss.chosen=1) LIMIT 1""")
+                   LEFT JOIN music_sources ms ON ms.chat_id=s.chat_id
+                   WHERE s.status='queued' AND (g.chosen=1 OR ks.chosen=1 OR ss.chosen=1 OR ms.chosen=1) LIMIT 1""")
             if not row:
                 time.sleep(5)
                 continue
@@ -134,9 +139,10 @@ def start_scan(chat_ids=None, force: bool = False) -> dict:
         chat_ids = [r["chat_id"] for r in db.q(
             "SELECT chat_id FROM groups WHERE chosen=1 "
             "UNION SELECT chat_id FROM kiosk_sources WHERE chosen=1 AND chat_id IS NOT NULL "
-            "UNION SELECT chat_id FROM sports_sources WHERE chosen=1 AND chat_id IS NOT NULL")]
+            "UNION SELECT chat_id FROM sports_sources WHERE chosen=1 AND chat_id IS NOT NULL "
+            "UNION SELECT chat_id FROM music_sources WHERE chosen=1 AND chat_id IS NOT NULL")]
     for cid in chat_ids:
-        g = db.one("SELECT title FROM groups WHERE chat_id=? AND (chosen=1 OR EXISTS(SELECT 1 FROM kiosk_sources WHERE chat_id=? AND chosen=1) OR EXISTS(SELECT 1 FROM sports_sources WHERE chat_id=? AND chosen=1))", (int(cid), int(cid), int(cid)))
+        g = db.one("SELECT title FROM groups WHERE chat_id=? AND (chosen=1 OR EXISTS(SELECT 1 FROM kiosk_sources WHERE chat_id=? AND chosen=1) OR EXISTS(SELECT 1 FROM sports_sources WHERE chat_id=? AND chosen=1) OR EXISTS(SELECT 1 FROM music_sources WHERE chat_id=? AND chosen=1))", (int(cid), int(cid), int(cid), int(cid)))
         if not g:
             continue
         conn.execute(
@@ -167,7 +173,8 @@ def _live_sync_loop(interval: int):
                 chosen = [int(r["chat_id"]) for r in db.q(
                     "SELECT chat_id FROM groups WHERE chosen=1 "
                     "UNION SELECT chat_id FROM kiosk_sources WHERE chosen=1 AND chat_id IS NOT NULL "
-                    "UNION SELECT chat_id FROM sports_sources WHERE chosen=1 AND chat_id IS NOT NULL")]
+                    "UNION SELECT chat_id FROM sports_sources WHERE chosen=1 AND chat_id IS NOT NULL "
+                    "UNION SELECT chat_id FROM music_sources WHERE chosen=1 AND chat_id IS NOT NULL")]
                 if chosen:
                     start_scan(chosen, force=True)
         except Exception:
