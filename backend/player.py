@@ -598,9 +598,9 @@ def _play_embedded(src: str, title: str = "", live: bool = False):
         if _VLC_INSTANCE is None:
             _VLC_INSTANCE = vlc.Instance(
                 "--no-video-title-show",
-                "--network-caching=30000",
-                "--live-caching=30000",
-                "--file-caching=30000",
+                "--network-caching=8000",
+                "--live-caching=8000",
+                "--file-caching=5000",
                 "--http-reconnect",
                 "--http-continuous",
             )

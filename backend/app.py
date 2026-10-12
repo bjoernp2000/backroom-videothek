@@ -1716,8 +1716,13 @@ def create_app() -> Flask:
             return jsonify({'ok': False, 'error': 'Medium nicht verfügbar'}), 404
         _player.update(mid=mid, time=0, playing=True)
         try:
-            from . import player
-            player.play_video(f"http://127.0.0.1:{config.PORT}/api/media/{mid}/stream", mi.get('filename') or '')
+            from . import player, tdltool
+            source = f"http://127.0.0.1:{config.PORT}/api/media/{mid}/stream"
+            try:
+                source = tdltool.serve_stream(int(mi['chat_id']), int(mi['message_id'])) or source
+            except Exception:
+                pass
+            player.play_video(source, mi.get('filename') or '')
         except Exception as exc:
             return jsonify({'ok': False, 'error': f'Player konnte nicht gestartet werden: {exc}'}), 500
         return jsonify({'ok': True, 'mode': 'live', 'embed': True})
