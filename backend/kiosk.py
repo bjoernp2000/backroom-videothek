@@ -53,7 +53,8 @@ def catalog(limit: int = 48) -> dict:
                       "category": _kind(title, row.get("media_kind")),
                       "source": row.get("chat_title") or "Telegram-Gruppe",
                       "date": row.get("date_utc") or "", "link": row.get("link") or "",
-                      "print": True})
+                      "filename": row.get("filename") or "", "format": (row.get("filename") or "").rsplit('.', 1)[-1].upper(),
+                      "cover_title": title.split("\n", 1)[0][:70], "print": True})
     if not items:
         return {"ok": True, "chosen": chosen, "items": [], "has_sources": True,
                 "fallback": _fallback_news(limit), "fallback_reason": "no_print"}

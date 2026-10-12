@@ -32,7 +32,9 @@ _peoplef_cache: dict = {}
 
 _EXT_MIME = {".mkv": "video/x-matroska", ".mp4": "video/mp4", ".webm": "video/webm",
              ".avi": "video/x-msvideo", ".mov": "video/quicktime", ".m4v": "video/mp4",
-             ".ts": "video/mp2t"}
+             ".ts": "video/mp2t", ".pdf": "application/pdf", ".epub": "application/epub+zip",
+             ".mobi": "application/x-mobipocket-ebook", ".cbz": "application/vnd.comicbook+zip",
+             ".cbr": "application/vnd.comicbook-rar", ".djvu": "image/vnd.djvu"}
 
 
 def _mime(mi: dict) -> str:
@@ -51,7 +53,7 @@ def _media_in_chosen(mid: int) -> bool:
     mi = db.one("SELECT chat_id FROM media_items WHERE id=?", (mid,))
     if not mi:
         return False
-    return bool(db.one("SELECT 1 FROM groups WHERE chat_id=? AND chosen=1", (mi["chat_id"],)))
+    return bool(db.one("SELECT 1 FROM groups WHERE chat_id=? AND chosen=1", (mi["chat_id"],))) or bool(db.one("SELECT 1 FROM kiosk_sources WHERE chat_id=? AND chosen=1", (mi["chat_id"],)))
 
 
 def create_app() -> Flask:
