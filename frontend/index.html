@@ -97,6 +97,10 @@ nav::-webkit-scrollbar{display:none}
 
 nav button{background:none;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:99px;cursor:pointer;font-size:14px}
 nav button.on{color:var(--fg);background:var(--card2);border-color:var(--line)}
+#areaSubnav{display:none;margin-left:auto}
+#areaSubnav button{font-size:13px;padding:7px 11px}
+body.area-tv #mainNav,body.area-sports #mainNav,body.area-kiosk #mainNav,body.area-music #mainNav{display:none}
+body.area-tv #areaSubnav,body.area-sports #areaSubnav,body.area-kiosk #areaSubnav,body.area-music #areaSubnav{display:flex}
 main{max-width:1400px;margin:0 auto;padding:16px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .fgenres{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
@@ -805,7 +809,7 @@ nav button{font-size:12.5px;padding:7px 10px;border-radius:5px}
     <button type="button" class="area-btn" data-area="kiosk">Backroom Kiosk</button>
     <button type="button" class="area-btn" data-area="music">Backroom Music</button>
   </div>
-  <nav>
+  <nav id="mainNav">
     <button data-v="home" class="on"><span class="navic"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg></span>Start</button>
     <button data-v="lib"><span class="navic"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 2v2h2V6H5zm4 0v2h2V6H9zm4 0v2h2V6h-2zm4 0v2h2V6h-2zM5 10v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM5 14v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM5 18v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg></span>Filme</button>
     <button data-v="series"><span class="navic"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2 2v10h12V7H6zm2 2h8v6H8V9z"/></svg></span>Serien</button>
@@ -834,6 +838,7 @@ nav button{font-size:12.5px;padding:7px 10px;border-radius:5px}
       </div>
     </div>
       </nav>
+      <nav id="areaSubnav" aria-label="Unterbereich"></nav>
 </div>
 <button class="shutdown-btn" onclick="shutdownApp()" title="Anwendung beenden">
   <span class="navic"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg></span>
@@ -928,6 +933,15 @@ function applyKidsNav(){ }
 async function loadKids(){ try{ const r=await j('/api/kids'); _kidsMax=(r&&r.max)||0; applyKidsNav(); }catch(e){} }
 let state = {view:'home', q:'', genre:'', group:'', year:'', kind:'movie', person:null, personRole:null, personName:'', status:{}};
 let appArea=['movies','series','tv','sports','kiosk','music'].includes(localStorage.getItem('backroom-area'))?localStorage.getItem('backroom-area'):'movies';
+function renderAreaSubnav(){
+  const labels={tv:['Übersicht','Sender','EPG','Quellen'],sports:['Übersicht','Wrestling','Highlights','Quellen'],kiosk:['Übersicht','Zeitungen','Magazine','Bücher','Quellen'],music:['Musik','Hörspiele','Telegram-Quellen','YouTube']};
+  const el=$('#areaSubnav'); if(!el)return;
+  el.innerHTML=(labels[appArea]||[]).map((x,i)=>`<button type="button" class="${i===0?'on':''}" data-sub="${esc(x)}">${esc(x)}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    el.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    if(appArea==='music' && b.dataset.sub==='Hörspiele'){document.querySelector('.music-audiobooks')?.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+}
   function setArea(area, renderNow=true){
     appArea=['movies','series','tv','sports','kiosk','music'].includes(area)?area:'movies';
     localStorage.setItem('backroom-area',appArea);
@@ -937,6 +951,7 @@ let appArea=['movies','series','tv','sports','kiosk','music'].includes(localStor
     document.body.classList.toggle('area-kiosk',appArea==='kiosk');
     document.body.classList.toggle('area-music',appArea==='music');
     document.querySelectorAll('.area-btn').forEach(b=>b.classList.toggle('on',b.dataset.area===appArea));
+    renderAreaSubnav();
     if(renderNow){state.view=appArea==='series'?'series':appArea==='tv'?'tv':appArea==='sports'?'sports':appArea==='kiosk'?'kiosk':appArea==='music'?'music':'home';render();}
   }
 const $ = s=>document.querySelector(s);
@@ -1011,13 +1026,13 @@ function toggleMore(){const d=$('#moreDrop');if(d)d.classList.toggle('open');}
 document.addEventListener('click',e=>{const m=$('#moreDrop');if(m&&m.classList.contains('open')&&!e.target.closest('.navmore'))m.classList.remove('open');});
 document.querySelectorAll('.area-btn').forEach(b=>b.onclick=()=>setArea(b.dataset.area));
 setArea(appArea,false);
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('#mainNav button').forEach(b=>b.onclick=()=>{
   if(b.dataset.v==='series')setArea('series',false);
   else if(['home','lib','hubs','theaters','classics','doku','horror','kids','intl','uhd'].includes(b.dataset.v))setArea('movies',false);
   if(b.dataset.v==='accts'){acctsOpen();return;}
   if(b.id==='moreBtn'){toggleMore();return;}
   const d=$('#moreDrop'); if(d)d.classList.remove('open');
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('#mainNav button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.view=b.dataset.v; render();
 });
 
@@ -1215,7 +1230,7 @@ async function renderMusic(){
   const audioCards=(audio.items||[]).map(x=>`<a class="music-card" href="${esc(x.url||'#')}" target="_blank" rel="noopener"><div class="music-cover">${x.kind==='telegram'?'🔊':'🎧'}</div><b>${esc(x.title)}</b><small>${esc(x.source||'Quelle')} · Hörspiel</small></a>`).join('');
   const sourceList=`<span><i class="music-dot"></i>YouTube ${data.youtube&&data.youtube.length?`· ${data.youtube.length} Quellen`:''}</span>${data.has_telegram?'<span><i class="music-dot tg"></i>Telegram · ausgewählte Gruppen</span>':'<span><i class="music-dot tg"></i>Telegram · keine Gruppe gewählt</span>'}`;
   const b=$('#page');
-  b.innerHTML=`<div class="musicPage"><header class="music-head"><span class="music-kicker">THE BACKROOM · MUSIC</span><h1>Deine Musik.</h1><p>Playlists, Sessions und deine Musikquellen in einer ruhigen, Spotify-inspirierten Oberfläche.</p></header><div class="music-controls"><div class="music-tabs"><button data-music-source="youtube" class="${source==='youtube'?'active':''}">YouTube</button><button data-music-source="telegram" class="${source==='telegram'?'active':''}">Telegram</button><button data-music-source="both" class="${source==='both'?'active':''}">Beide Quellen</button></div><span class="music-source-note">Anzeige: ${label}${!data.has_telegram?' · YouTube-Standard':''}</span></div><section class="music-layout"><div class="music-feature"><span class="music-kicker">BACKROOM PLAYLIST</span><h2>Musik, die zu deinem Backroom passt.</h2><p>Wähle jederzeit, ob YouTube, deine ausgewählten Telegram-Gruppen oder beide Quellen erscheinen.</p><button class="music-play" onclick="toast('Quelle ${esc(label)} ausgewählt')">▶</button></div><aside class="music-side"><h3>Deine Quellen</h3><p>Telegram wird nur nach deiner Gruppenauswahl eingeblendet. Ohne Auswahl bleibt YouTube aktiv.</p><div class="music-source-list">${sourceList}</div></aside></section><section class="music-section"><div class="music-section-head"><h2>Für dich ausgewählt</h2><span>${(data.items||[]).length} Einträge · ${label}</span></div><div class="music-grid">${cards||'<div class="music-empty">Für diese Quelle wurden noch keine Musik-Einträge gefunden.</div>'}</div></section><section class="music-section"><div class="music-section-head"><h2>Hörspiele</h2><span>${(audio.items||[]).length} Einträge · Telegram + YouTube</span></div><div class="music-grid">${audioCards||'<div class="music-empty">Noch keine Hörspiele in den ausgewählten Telegram-Quellen. Weitere Quellen können hinzugefügt werden.</div>'}</div></section></div>`;
+  b.innerHTML=`<div class="musicPage"><header class="music-head"><span class="music-kicker">THE BACKROOM · MUSIC</span><h1>Deine Musik.</h1><p>Playlists, Sessions und deine Musikquellen in einer ruhigen, Spotify-inspirierten Oberfläche.</p></header><div class="music-controls"><div class="music-tabs"><button data-music-source="youtube" class="${source==='youtube'?'active':''}">YouTube</button><button data-music-source="telegram" class="${source==='telegram'?'active':''}">Telegram</button><button data-music-source="both" class="${source==='both'?'active':''}">Beide Quellen</button></div><span class="music-source-note">Anzeige: ${label}${!data.has_telegram?' · YouTube-Standard':''}</span></div><section class="music-layout"><div class="music-feature"><span class="music-kicker">BACKROOM PLAYLIST</span><h2>Musik, die zu deinem Backroom passt.</h2><p>Wähle jederzeit, ob YouTube, deine ausgewählten Telegram-Gruppen oder beide Quellen erscheinen.</p><button class="music-play" onclick="toast('Quelle ${esc(label)} ausgewählt')">▶</button></div><aside class="music-side"><h3>Deine Quellen</h3><p>Telegram wird nur nach deiner Gruppenauswahl eingeblendet. Ohne Auswahl bleibt YouTube aktiv.</p><div class="music-source-list">${sourceList}</div></aside></section><section class="music-section"><div class="music-section-head"><h2>Für dich ausgewählt</h2><span>${(data.items||[]).length} Einträge · ${label}</span></div><div class="music-grid">${cards||'<div class="music-empty">Für diese Quelle wurden noch keine Musik-Einträge gefunden.</div>'}</div></section><section class="music-section music-audiobooks"><div class="music-section-head"><h2>Hörspiele</h2><span>${(audio.items||[]).length} Einträge · Telegram + YouTube</span></div><div class="music-grid">${audioCards||'<div class="music-empty">Noch keine Hörspiele in den ausgewählten Telegram-Quellen. Weitere Quellen können hinzugefügt werden.</div>'}</div></section></div>`;
   b.querySelectorAll('[data-music-source]').forEach(btn=>btn.onclick=()=>{localStorage.setItem('backroom-music-source',btn.dataset.musicSource);renderMusic();});
 }
 
