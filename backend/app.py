@@ -393,7 +393,7 @@ def create_app() -> Flask:
         limit = min(request.args.get("limit", 60, type=int), 5000)
         offset = request.args.get("offset", 0, type=int)
         genre = request.args.get("genre")
-        kind = request.args.get("kind")
+        kind = request.args.get("kind") or "movie"
         qtext = (request.args.get("q") or "").strip()
         fsk = request.args.get("fsk")
         year = request.args.get("year", type=int)

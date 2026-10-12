@@ -1,12 +1,16 @@
 """Datenzugriff fuer Backroom Kiosk.
 
-Der Kiosk zeigt nur Medien aus vom Nutzer gewählten Telegram-Gruppen.
-Ohne Auswahl liefert die Funktion bewusst keine Medien.
+Der Kiosk zeigt nur echte Printmedien aus vom Nutzer gewählten Telegram-Gruppen.
+Ohne Auswahl oder ohne Printbestand liefert er stattdessen kostenlose News im Zeitungsformat.
 """
 from __future__ import annotations
 
 import re
 from . import db
+from . import ticker
+
+_PRINT_EXTS = (".pdf", ".epub", ".mobi", ".cbz", ".cbr", ".djvu")
+_PRINT_KINDS = {"print", "newspaper", "magazine", "book", "document"}
 
 
 def _kind(title: str, media_kind: str | None) -> str:
@@ -22,13 +26,22 @@ def catalog(limit: int = 48) -> dict:
     groups = db.q("SELECT chat_id, title, chosen FROM groups ORDER BY title COLLATE NOCASE")
     chosen = [g for g in groups if int(g.get("chosen") or 0) == 1]
     if not chosen:
-        return {"ok": True, "chosen": [], "items": [], "has_sources": False}
+        return {"ok": True, "chosen": [], "items": [], "has_sources": False,
+                "fallback": _fallback_news(limit), "fallback_reason": "no_group"}
     rows = db.q(
         """SELECT m.id, m.chat_title, m.caption, m.filename, m.date_utc,
                   m.media_kind, m.link
              FROM media_items m JOIN groups g ON g.chat_id=m.chat_id
             WHERE g.chosen=1
-            ORDER BY COALESCE(m.date_utc,'') DESC, m.id DESC LIMIT ?""", (max(1, min(int(limit), 200)),))
+              AND (LOWER(COALESCE(m.filename,'')) LIKE '%.pdf'
+                OR LOWER(COALESCE(m.filename,'')) LIKE '%.epub'
+                OR LOWER(COALESCE(m.filename,'')) LIKE '%.mobi'
+                OR LOWER(COALESCE(m.filename,'')) LIKE '%.cbz'
+                OR LOWER(COALESCE(m.filename,'')) LIKE '%.cbr'
+                OR LOWER(COALESCE(m.filename,'')) LIKE '%.djvu'
+                OR m.media_kind IN ('print','newspaper','magazine','book','document'))
+            ORDER BY COALESCE(m.date_utc,'') DESC, m.id DESC LIMIT ?""",
+        (max(1, min(int(limit), 200)),))
     items = []
     for row in rows:
         title = (row.get("caption") or row.get("filename") or "").strip()
@@ -37,5 +50,22 @@ def catalog(limit: int = 48) -> dict:
         items.append({"id": row["id"], "title": title.split("\n", 1)[0][:180],
                       "category": _kind(title, row.get("media_kind")),
                       "source": row.get("chat_title") or "Telegram-Gruppe",
-                      "date": row.get("date_utc") or "", "link": row.get("link") or ""})
-    return {"ok": True, "chosen": chosen, "items": items, "has_sources": True}
+                      "date": row.get("date_utc") or "", "link": row.get("link") or "",
+                      "print": True})
+    if not items:
+        return {"ok": True, "chosen": chosen, "items": [], "has_sources": True,
+                "fallback": _fallback_news(limit), "fallback_reason": "no_print"}
+    return {"ok": True, "chosen": chosen, "items": items, "has_sources": True,
+            "fallback": [], "fallback_reason": ""}
+
+
+def _fallback_news(limit: int) -> list[dict]:
+    """Kostenlose RSS-News als ehrlicher Kiosk-Ersatz ohne Printquelle."""
+    try:
+        news = ticker.get_news().get("items") or []
+    except Exception:
+        news = []
+    return [{"title": x.get("title", "Nachricht"), "source": "News",
+             "category": "newspaper", "link": x.get("url", ""),
+             "cover": "NEWS", "print": False}
+            for x in news[:max(1, min(int(limit), 60))]]
