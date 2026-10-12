@@ -23,16 +23,18 @@ def _kind(title: str, media_kind: str | None) -> str:
 
 
 def catalog(limit: int = 48) -> dict:
-    groups = db.q("SELECT chat_id, title, chosen FROM groups ORDER BY title COLLATE NOCASE")
-    chosen = [g for g in groups if int(g.get("chosen") or 0) == 1]
+    chosen = db.q("""SELECT g.chat_id, g.title, ks.chosen
+                     FROM kiosk_sources ks JOIN groups g ON g.chat_id=ks.chat_id
+                    WHERE ks.chosen=1 ORDER BY g.title COLLATE NOCASE""")
     if not chosen:
         return {"ok": True, "chosen": [], "items": [], "has_sources": False,
                 "fallback": _fallback_news(limit), "fallback_reason": "no_group"}
     rows = db.q(
         """SELECT m.id, m.chat_title, m.caption, m.filename, m.date_utc,
                   m.media_kind, m.link
-             FROM media_items m JOIN groups g ON g.chat_id=m.chat_id
-            WHERE g.chosen=1
+             FROM media_items m JOIN kiosk_sources ks ON ks.chat_id=m.chat_id
+                                  JOIN groups g ON g.chat_id=m.chat_id
+            WHERE ks.chosen=1
               AND (LOWER(COALESCE(m.filename,'')) LIKE '%.pdf'
                 OR LOWER(COALESCE(m.filename,'')) LIKE '%.epub'
                 OR LOWER(COALESCE(m.filename,'')) LIKE '%.mobi'

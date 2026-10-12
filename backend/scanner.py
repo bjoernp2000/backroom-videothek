@@ -43,10 +43,15 @@ def _topic_titles(entity) -> dict:
 
 def _store_video(entity, msg, topic_titles, chat_id: int, conn=None):
     """Speichert ein neues Media-Item aus einer Telegram-Nachricht."""
-    from .telegram import get_media_video, message_link
+    from .telegram import get_media_video, get_media_print, message_link
     media = get_media_video(msg)
+    print_item = False
+    if not media:
+        media = get_media_print(msg)
+        print_item = bool(media)
     if not media:
         return
+
     rt = getattr(msg, "reply_to", None)
     topic_id = getattr(rt, "forum_topic", None) and getattr(rt, "reply_to_msg_id", None) or None
     caption = (msg.text or msg.message or "")[:2000]
@@ -73,7 +78,7 @@ def _store_video(entity, msg, topic_titles, chat_id: int, conn=None):
          media.get("duration", 0), media.get("width", 0), media.get("height", 0),
          link, parsed.get("title", ""), parsed.get("year", None),
          parsed.get("season", None), parsed.get("episode", None),
-         parsed.get("media_kind", "movie"), "unmatched",
+         parsed.get("media_kind", "print" if print_item else "movie"), "unmatched",
          specs["quality"], specs["codec"], specs["audio_lang"], specs["hdr"],
          specs["subtitles"], specs["release_type"]))
     _conn.commit()
@@ -85,7 +90,8 @@ def _scan_worker():
             row = db.one(
                 """SELECT s.chat_id,s.title,s.last_message_id
                    FROM scan_state s JOIN groups g ON g.chat_id=s.chat_id
-                   WHERE s.status='queued' AND g.chosen=1 LIMIT 1""")
+                   LEFT JOIN kiosk_sources ks ON ks.chat_id=s.chat_id
+                   WHERE s.status='queued' AND (g.chosen=1 OR ks.chosen=1) LIMIT 1""")
             if not row:
                 time.sleep(5)
                 continue
@@ -127,7 +133,7 @@ def start_scan(chat_ids=None, force: bool = False) -> dict:
         chat_ids = [r["chat_id"] for r in db.q(
             "SELECT chat_id FROM groups WHERE chosen=1")]
     for cid in chat_ids:
-        g = db.one("SELECT title FROM groups WHERE chat_id=? AND chosen=1", (int(cid),))
+        g = db.one("SELECT title FROM groups WHERE chat_id=? AND (chosen=1 OR EXISTS(SELECT 1 FROM kiosk_sources WHERE chat_id=? AND chosen=1))", (int(cid), int(cid)))
         if not g:
             continue
         conn.execute(

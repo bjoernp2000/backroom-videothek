@@ -62,6 +62,7 @@ def create_app() -> Flask:
     scanner.resume_scans()   # laufende/queuende Scans nach Neustart fortsetzen
     scanner.resume_pending() # Downloads aus Warteschlange/.part neu aufnehmen
     scanner.start_pump()     # Fehler selbstlaeufig erneut versuchen
+    scanner.start_scan([r["chat_id"] for r in db.q("SELECT chat_id FROM kiosk_sources WHERE chosen=1")])
     scanner.start_live_sync(60)  # gewählte Telegram-Quelle regelmäßig nachziehen
     scanner.start_matcher()
     curation.start_credits_worker()   # Cast/Crew fuer Schauspieler-Seite nachziehen

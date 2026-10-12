@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS scan_state(
     error TEXT, messages_seen INTEGER DEFAULT 0, videos_seen INTEGER DEFAULT 0,
     log TEXT DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS kiosk_sources(
+    chat_id INTEGER PRIMARY KEY,
+    topic_id INTEGER,
+    chosen INTEGER DEFAULT 1,
+    added_at REAL
+);
+CREATE INDEX IF NOT EXISTS idx_kiosk_sources_chosen ON kiosk_sources(chosen);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 
@@ -142,6 +149,10 @@ def init_db() -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_progress_film ON progress(film_id)")
     conn.execute("""CREATE TABLE IF NOT EXISTS mylist(
         film_id INTEGER PRIMARY KEY REFERENCES films(id), added_at REAL)""")
+    conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1002142840116, 1, time.time()))
+    conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1001861728301, 1, time.time()))
+    conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1002101634592, 1, time.time()))
+    conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1002052651753, 1, time.time()))
     conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('created',?)", (str(time.time()),))
     conn.commit()
 
