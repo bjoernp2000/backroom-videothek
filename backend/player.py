@@ -40,6 +40,10 @@ _START_LOCK = threading.Lock()
 _VLC_INSTANCE = None
 _EMBEDDED_MP = None
 _EMBEDDED_MEDIA = None
+_EMBEDDED_SRC = ""
+_EMBEDDED_TITLE = ""
+_EMBEDDED_LIVE = False
+_LIVE_WATCHDOG_STARTED = False
 
 
 def _fmt(ms: int) -> str:
@@ -557,9 +561,10 @@ class NetflixStylePlayer:
         self.mp.audio_set_volume(volume)
 
 
-def _play_embedded(src: str, title: str = ""):
+def _play_embedded(src: str, title: str = "", live: bool = False):
     """Spielt den Stream direkt im eingebetteten Win32-VLC-Host ab."""
     global _VLC_INSTANCE, _EMBEDDED_MP, _EMBEDDED_MEDIA
+    global _EMBEDDED_SRC, _EMBEDDED_TITLE, _EMBEDDED_LIVE
     from . import embed
 
     hwnd = embed.hwnd()
@@ -593,9 +598,11 @@ def _play_embedded(src: str, title: str = ""):
         if _VLC_INSTANCE is None:
             _VLC_INSTANCE = vlc.Instance(
                 "--no-video-title-show",
-                "--network-caching=1500",
-                "--file-caching=1500",
+                "--network-caching=30000",
+                "--live-caching=30000",
+                "--file-caching=30000",
                 "--http-reconnect",
+                "--http-continuous",
             )
         media = _VLC_INSTANCE.media_new_location(src)
         if title:
@@ -614,12 +621,51 @@ def _play_embedded(src: str, title: str = ""):
             mp.release()
             media.release()
             raise RuntimeError("libVLC konnte den Stream nicht starten")
+        _EMBEDDED_SRC = src
+        _EMBEDDED_TITLE = title
+        _EMBEDDED_LIVE = live
+        if live:
+            _start_live_watchdog()
         return mp
+
+
+def _start_live_watchdog():
+    """Startet einen Live-HLS nach einem kurzfristigen VLC-Abbruch neu."""
+    global _LIVE_WATCHDOG_STARTED
+    if _LIVE_WATCHDOG_STARTED:
+        return
+    _LIVE_WATCHDOG_STARTED = True
+
+    def watch():
+        global _LIVE_WATCHDOG_STARTED
+        try:
+            while True:
+                time.sleep(2)
+                if not _EMBEDDED_LIVE:
+                    return
+                mp = _EMBEDDED_MP
+                if mp is None:
+                    continue
+                state = str(mp.get_state())
+                if state not in ("State.Ended", "State.Error"):
+                    continue
+                src, title = _EMBEDDED_SRC, _EMBEDDED_TITLE
+                if src:
+                    time.sleep(1)
+                    try:
+                        _play_embedded(src, title, live=True)
+                    except Exception:
+                        pass
+        finally:
+            _LIVE_WATCHDOG_STARTED = False
+
+    threading.Thread(target=watch, daemon=True, name="live-hls-watchdog").start()
 
 
 def stop_video():
     """Trennt den aktuell eingebetteten Stream vollständig."""
-    global _EMBEDDED_MP, _EMBEDDED_MEDIA
+    global _EMBEDDED_MP, _EMBEDDED_MEDIA, _EMBEDDED_LIVE
+    _EMBEDDED_LIVE = False
     with _START_LOCK:
         mp, media = _EMBEDDED_MP, _EMBEDDED_MEDIA
         _EMBEDDED_MP = None
@@ -674,6 +720,6 @@ def player_command(cmd: str, arg: int | None = None):
         mp.set_time(max(0, int(mp.get_time() or 0) + int(arg)))
 
 
-def play_video(src: str, title: str = ""):
-    """Startet ausschließlich den eingebetteten In-App-Player."""
-    return _play_embedded(src, title)
+def play_video(src: str, title: str = "", live: bool = False):
+    """Startet den eingebetteten In-App-Player."""
+    return _play_embedded(src, title, live=live)
