@@ -76,7 +76,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,'Segoe UI',sa
 @media(max-width:720px){#tickweather{display:none}.tickwrap{animation-duration:45s}}
 header{position:sticky;top:0;z-index:20;background:rgba(11,14,20,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .hd{display:flex;align-items:center;gap:12px;padding:10px 120px 10px 16px;max-width:1400px;margin:0 auto}
-.logo{font-size:19px;font-weight:800;letter-spacing:.5px}
+.logo{font-size:19px;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap}
 .logo b{color:var(--acc)}
 nav{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px;min-width:0;max-width:100%;padding-bottom:2px}
 nav button{display:inline-flex;align-items:center;gap:6px;flex:none}
@@ -101,7 +101,8 @@ nav button.on{color:var(--fg);background:var(--card2);border-color:var(--line)}
 .context-toggle{display:inline-flex;align-items:center;gap:5px;background:#181b21;border:1px solid var(--line);color:var(--mut);padding:7px 11px;border-radius:7px;cursor:pointer;font-size:12px;white-space:nowrap}
 .context-toggle:hover,.context-toggle[aria-expanded="true"]{color:var(--fg);border-color:var(--acc);background:var(--card2)}
 #contextNav #mainNav,#contextNav #areaSubnav{display:none;position:absolute;right:0;top:calc(100% + 8px);z-index:40;min-width:270px;max-width:min(700px,calc(100vw - 30px));padding:8px;background:rgba(18,21,28,.98);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 34px rgba(0,0,0,.48)}
-#contextNav.open #mainNav,#contextNav.open #areaSubnav{display:flex}
+#contextNav.open[data-mode="library"] #mainNav{display:flex}
+#contextNav.open[data-mode="area"] #areaSubnav{display:flex}
 #contextNav #mainNav{flex-wrap:wrap;gap:4px;margin:0}
 #contextNav #areaSubnav{flex-wrap:wrap;gap:4px;margin:0}
 #contextNav #areaSubnav button{display:inline-flex}
@@ -811,7 +812,7 @@ nav button{font-size:12.5px;padding:7px 10px;border-radius:5px}
   <div class="tickmar" id="tickmar"><div class="tickwrap" id="tickwrap"><span id="ticktxt"></span></div></div>
 </div>
 <header><div class="hd">
-  <div class="logo">▶ <b>THE</b> BACKROOM</div>
+  <div class="logo" role="button" tabindex="0" title="THE BACKROOM öffnen" onclick="setArea('movies')" onkeydown="if(event.key==='Enter'||event.key===' ')setArea('movies')">▶ <b>THE</b> BACKROOM</div>
   <div class="area-switch" role="tablist" aria-label="Bereich auswählen">
     <button type="button" class="area-btn on" data-area="movies">Backroom Movies</button>
     <button type="button" class="area-btn" data-area="series">Backroom Series</button>
@@ -951,8 +952,8 @@ function renderAreaSubnav(){
   const labels={tv:['Übersicht','Sender','EPG','Quellen'],sports:['Übersicht','Wrestling','Highlights','Quellen'],kiosk:['Übersicht','Zeitungen','Magazine','Bücher','Quellen'],music:['Musik','Hörspiele','Telegram-Quellen','YouTube']};
   const el=$('#areaSubnav'), main=$('#mainNav'), toggle=$('#contextToggle'); if(!el||!main||!toggle)return;
   const library=['movies','series'].includes(appArea);
-  main.style.display=library?'flex':'none';
-  el.style.display=library?'none':'flex';
+  const context=$('#contextNav');
+  if(context)context.dataset.mode=library?'library':'area';
   toggle.textContent=(library?(appArea==='series'?'Serien sortieren':'Filme sortieren'):'Unterbereiche')+'⌄';
   el.innerHTML=(labels[appArea]||[]).map((x,i)=>`<button type="button" class="${i===0?'on':''}" data-sub="${esc(x)}">${esc(x)}</button>`).join('');
 
