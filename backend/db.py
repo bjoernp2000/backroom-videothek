@@ -71,6 +71,14 @@ CREATE TABLE IF NOT EXISTS kiosk_sources(
     added_at REAL
 );
 CREATE INDEX IF NOT EXISTS idx_kiosk_sources_chosen ON kiosk_sources(chosen);
+CREATE TABLE IF NOT EXISTS sports_sources(
+    source_url TEXT PRIMARY KEY,
+    username TEXT,
+    chat_id INTEGER,
+    chosen INTEGER DEFAULT 1,
+    added_at REAL
+);
+CREATE INDEX IF NOT EXISTS idx_sports_sources_chat ON sports_sources(chat_id, chosen);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 
@@ -153,6 +161,19 @@ def init_db() -> None:
     conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1001861728301, 1, time.time()))
     conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1002101634592, 1, time.time()))
     conn.execute("INSERT OR IGNORE INTO kiosk_sources(chat_id, chosen, added_at) VALUES(?,?,?)", (-1002052651753, 1, time.time()))
+    for source_url, username in (
+        ("https://t.me/+cwHVE_xyOmNmYTYy", None),
+        ("https://t.me/wweoldvdo", "wweoldvdo"),
+        ("https://t.me/WWE_AEW_DL27", "WWE_AEW_DL27"),
+        ("https://t.me/wwebackup1", "wwebackup1"),
+    ):
+        conn.execute(
+            "INSERT OR IGNORE INTO sports_sources(source_url,username,chosen,added_at) VALUES(?,?,1,?)",
+            (source_url, username, time.time()))
+        if username:
+            conn.execute(
+                "UPDATE sports_sources SET chat_id=(SELECT chat_id FROM groups WHERE lower(username)=lower(?) AND last_seen>0) "
+                "WHERE source_url=? AND chat_id IS NULL", (username, source_url))
     conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('created',?)", (str(time.time()),))
     conn.commit()
 

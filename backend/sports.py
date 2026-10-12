@@ -55,7 +55,8 @@ def _telegram_items(limit: int = 40) -> list[dict]:
         """SELECT m.id, m.chat_id, m.message_id, m.chat_title, m.caption,
                   m.filename, m.link, m.date_utc
              FROM media_items m JOIN groups g ON g.chat_id=m.chat_id
-            WHERE g.chosen=1
+            WHERE EXISTS (SELECT 1 FROM sports_sources ss
+                            WHERE ss.chat_id=m.chat_id AND ss.chosen=1)
               AND lower(COALESCE(m.caption,'') || ' ' || COALESCE(m.filename,''))
                   GLOB '*wrestl*'
             ORDER BY COALESCE(m.date_utc,'') DESC, m.id DESC LIMIT 400""")
