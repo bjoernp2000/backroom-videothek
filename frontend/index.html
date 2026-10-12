@@ -97,10 +97,19 @@ nav::-webkit-scrollbar{display:none}
 
 nav button{background:none;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:99px;cursor:pointer;font-size:14px}
 nav button.on{color:var(--fg);background:var(--card2);border-color:var(--line)}
+#contextNav{position:relative;display:flex;align-items:center;margin-left:auto}
+.context-toggle{display:inline-flex;align-items:center;gap:5px;background:#181b21;border:1px solid var(--line);color:var(--mut);padding:7px 11px;border-radius:7px;cursor:pointer;font-size:12px;white-space:nowrap}
+.context-toggle:hover,.context-toggle[aria-expanded="true"]{color:var(--fg);border-color:var(--acc);background:var(--card2)}
+#contextNav #mainNav,#contextNav #areaSubnav{display:none;position:absolute;right:0;top:calc(100% + 8px);z-index:40;min-width:270px;max-width:min(700px,calc(100vw - 30px));padding:8px;background:rgba(18,21,28,.98);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 34px rgba(0,0,0,.48)}
+#contextNav.open #mainNav,#contextNav.open #areaSubnav{display:flex}
+#contextNav #mainNav{flex-wrap:wrap;gap:4px;margin:0}
+#contextNav #areaSubnav{flex-wrap:wrap;gap:4px;margin:0}
+#contextNav #areaSubnav button{display:inline-flex}
+#contextNav #mainNav .navmore{display:none}
 #areaSubnav{display:none;margin-left:auto}
 #areaSubnav button{font-size:13px;padding:7px 11px}
-body.area-tv #mainNav,body.area-sports #mainNav,body.area-kiosk #mainNav,body.area-music #mainNav{display:none}
-body.area-tv #areaSubnav,body.area-sports #areaSubnav,body.area-kiosk #areaSubnav,body.area-music #areaSubnav{display:flex}
+/* Context-Menü steuert den Unterbereich */
+/* Context-Unterpunkte werden im selben Menü eingeblendet */
 main{max-width:1400px;margin:0 auto;padding:16px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .fgenres{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
@@ -810,7 +819,9 @@ nav button{font-size:12.5px;padding:7px 10px;border-radius:5px}
     <button type="button" class="area-btn" data-area="sports">Backroom Sports</button>
     <button type="button" class="area-btn" data-area="kiosk">Backroom Kiosk</button>
     <button type="button" class="area-btn" data-area="music">Backroom Music</button>
+    <button type="button" class="context-toggle" id="contextToggle" aria-expanded="false">Filme sortieren⌄</button>
   </div>
+  <div id="contextNav" aria-label="Bereichsoptionen">
   <nav id="mainNav">
     <button data-v="home" class="on"><span class="navic"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg></span>THE BACKROOM</button>
     <button data-v="lib"><span class="navic"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 2v2h2V6H5zm4 0v2h2V6H9zm4 0v2h2V6h-2zm4 0v2h2V6h-2zM5 10v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM5 14v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zM5 18v2h2v-2H5zm4 0v2h2v-2H9zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg></span>Filme</button>
@@ -841,6 +852,7 @@ nav button{font-size:12.5px;padding:7px 10px;border-radius:5px}
     </div>
       </nav>
       <nav id="areaSubnav" aria-label="Unterbereich"></nav>
+  </div>
 </div>
 <button class="shutdown-btn" onclick="shutdownApp()" title="Anwendung beenden">
   <span class="navic"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg></span>
@@ -937,8 +949,13 @@ let state = {view:'home', q:'', genre:'', group:'', year:'', kind:'movie', perso
 let appArea=['movies','series','tv','sports','kiosk','music'].includes(localStorage.getItem('backroom-area'))?localStorage.getItem('backroom-area'):'movies';
 function renderAreaSubnav(){
   const labels={tv:['Übersicht','Sender','EPG','Quellen'],sports:['Übersicht','Wrestling','Highlights','Quellen'],kiosk:['Übersicht','Zeitungen','Magazine','Bücher','Quellen'],music:['Musik','Hörspiele','Telegram-Quellen','YouTube']};
-  const el=$('#areaSubnav'); if(!el)return;
+  const el=$('#areaSubnav'), main=$('#mainNav'), toggle=$('#contextToggle'); if(!el||!main||!toggle)return;
+  const library=['movies','series'].includes(appArea);
+  main.style.display=library?'flex':'none';
+  el.style.display=library?'none':'flex';
+  toggle.textContent=(library?(appArea==='series'?'Serien sortieren':'Filme sortieren'):'Unterbereiche')+'⌄';
   el.innerHTML=(labels[appArea]||[]).map((x,i)=>`<button type="button" class="${i===0?'on':''}" data-sub="${esc(x)}">${esc(x)}</button>`).join('');
+
   el.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     el.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
     if(appArea==='music' && b.dataset.sub==='Hörspiele'){document.querySelector('.music-audiobooks')?.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -1024,9 +1041,12 @@ async function j(u,o){
   return d;
 }
 
+function toggleContextNav(){const n=$('#contextNav'),b=$('#contextToggle');if(!n||!b)return;const open=n.classList.toggle('open');b.setAttribute('aria-expanded',String(open));}
+function closeContextNav(){const n=$('#contextNav'),b=$('#contextToggle');if(n)n.classList.remove('open');if(b)b.setAttribute('aria-expanded','false');}
 function toggleMore(){const d=$('#moreDrop');if(d)d.classList.toggle('open');}
-document.addEventListener('click',e=>{const m=$('#moreDrop');if(m&&m.classList.contains('open')&&!e.target.closest('.navmore'))m.classList.remove('open');});
-document.querySelectorAll('.area-btn').forEach(b=>b.onclick=()=>setArea(b.dataset.area));
+document.addEventListener('click',e=>{const m=$('#moreDrop');if(m&&m.classList.contains('open')&&!e.target.closest('.navmore'))m.classList.remove('open');if(!e.target.closest('#contextNav'))closeContextNav();});
+document.querySelectorAll('.area-btn').forEach(b=>b.onclick=()=>{closeContextNav();setArea(b.dataset.area);});
+document.querySelector('#contextToggle').onclick=toggleContextNav;
 setArea(appArea,false);
 document.querySelectorAll('#mainNav button').forEach(b=>b.onclick=()=>{
   if(b.dataset.v==='series')setArea('series',false);
@@ -1034,6 +1054,7 @@ document.querySelectorAll('#mainNav button').forEach(b=>b.onclick=()=>{
   if(b.dataset.v==='accts'){acctsOpen();return;}
   if(b.id==='moreBtn'){toggleMore();return;}
   const d=$('#moreDrop'); if(d)d.classList.remove('open');
+  closeContextNav();
   document.querySelectorAll('#mainNav button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.view=b.dataset.v; render();
 });
